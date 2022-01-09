@@ -3,12 +3,17 @@ use std::marker::PhantomData;
 use bevy::{
     app::Events,
     core::FixedTimestep,
-    ecs::system::{Resource, SystemParam},
+    ecs::{
+        event,
+        system::{Resource, SystemParam},
+    },
     prelude::{App, CoreStage, EventReader, ResMut, SystemSet},
     DefaultPlugins,
 };
+use strum::IntoEnumIterator;
+use strum_macros::EnumIter;
 
-#[derive(PartialEq, Debug, Clone, Hash)]
+#[derive(PartialEq, Debug, Clone, Hash, EnumIter)]
 pub enum NetworkEvent {
     SpawnPlayer(SpawnPlayer),
     SpawnSpaceship(SpawnSpaceship),
@@ -19,11 +24,27 @@ pub struct SpawnPlayer {
     pub name: &'static str,
     pub network_id: u32,
 }
+impl Default for SpawnPlayer {
+    fn default() -> Self {
+        Self {
+            network_id: Default::default(),
+            name: Default::default(),
+        }
+    }
+}
 
 #[derive(PartialEq, Debug, Clone, Hash)]
 pub struct SpawnSpaceship {
     pub damage: u32,
     pub network_id: u32,
+}
+impl Default for SpawnSpaceship {
+    fn default() -> Self {
+        Self {
+            damage: Default::default(),
+            network_id: Default::default(),
+        }
+    }
 }
 
 const EXTERNAL_EVENT_1: NetworkEvent = NetworkEvent::SpawnPlayer(SpawnPlayer {
@@ -37,14 +58,31 @@ const EXTERNAL_EVENT_2: NetworkEvent = NetworkEvent::SpawnSpaceship(SpawnSpacesh
 });
 
 trait EventSwitch {
-    fn add_event_switch<T>(&mut self) -> &mut Self;
+    fn add_event_switch<T: NetworkEvents2>(&mut self) -> &mut Self;
 }
 impl EventSwitch for App {
-    fn add_event_switch<T>(&mut self) -> &mut Self {
-        // TODO Need to accept T as Enum with some contrained for enum(T). Then iterate over it.
-        self.init_resource::<Events<T>>()
-            .add_system_to_stage(CoreStage::First, Events::<T>::update_system)
-        // TODO - I probably need a more advanced app implementation, now it says update system is not in trait.
+    fn add_event_switch<T: NetworkEvents2>(&mut self) -> &mut Self {
+        {
+            // For each enum variant, insert value of enum as Events<T>
+            // TODO Need to accept T as Enum with some contrained for enum(T). Then iterate over it.
+            self.init_resource::<Events<T>>()
+                .add_system_to_stage(CoreStage::First, Events::<T>::update_system);
+            // TODO - I probably need a more advanced app extend implementation, now it says update system is not in trait.
+            self
+        }
+    }
+}
+
+pub trait NetworkEvents2: Resource {
+    fn get_event(&self) -> Box<dyn Resource>;
+}
+
+impl NetworkEvents2 for NetworkEvent {
+    fn get_event(&self) -> Box<dyn Resource> {
+        match self {
+            NetworkEvent::SpawnPlayer(event) => Box::new(event),
+            NetworkEvent::SpawnSpaceship(event) => Box::new(event),
+        }
     }
 }
 
@@ -71,6 +109,7 @@ impl<'w, 's, T: Resource> EventWriterSwitch<'w, 's, T> {
 fn main() {
     let mut app = App::new();
     app.add_plugins(DefaultPlugins)
+        .add_event_switch::<NetworkEvent>()
         .add_system_set(
             SystemSet::new()
                 .with_run_criteria(FixedTimestep::step(120. / 60.))
@@ -78,13 +117,14 @@ fn main() {
         )
         .add_system(spawn_player)
         .add_system(spawn_spacehip);
+    // .add_event::NetworkEvent();
 
     app.run();
 }
 
 fn parse_events(event_switch: EventWriterSwitch<NetworkEvent>) {
-    event_switch.send(EXTERNAL_EVENT_1);
-    event_switch.send(EXTERNAL_EVENT_2);
+    // event_switch.send(EXTERNAL_EVENT_1);
+    // event_switch.send(EXTERNAL_EVENT_2);
 }
 
 fn spawn_player(mut events: EventReader<SpawnPlayer>) {
