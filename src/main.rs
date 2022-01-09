@@ -58,10 +58,10 @@ const EXTERNAL_EVENT_2: NetworkEvent = NetworkEvent::SpawnSpaceship(SpawnSpacesh
 });
 
 trait EventSwitch {
-    fn add_event_switch<T: NetworkEvents2>(&mut self) -> &mut Self;
+    fn add_event_switch<T: Resource>(&mut self) -> &mut Self;
 }
 impl EventSwitch for App {
-    fn add_event_switch<T: NetworkEvents2>(&mut self) -> &mut Self {
+    fn add_event_switch<T: Resource>(&mut self) -> &mut Self {
         {
             // For each enum variant, insert value of enum as Events<T>
             // TODO Need to accept T as Enum with some contrained for enum(T). Then iterate over it.
@@ -73,18 +73,18 @@ impl EventSwitch for App {
     }
 }
 
-pub trait NetworkEvents2: Resource {
-    fn get_event(&self) -> Box<dyn Resource>;
-}
+// pub trait NetworkEvents2: Resource {
+//     fn get_event(&self) -> Box<dyn Resource>;
+// }
 
-impl NetworkEvents2 for NetworkEvent {
-    fn get_event(&self) -> Box<dyn Resource> {
-        match self {
-            NetworkEvent::SpawnPlayer(event) => Box::new(event),
-            NetworkEvent::SpawnSpaceship(event) => Box::new(event),
-        }
-    }
-}
+// impl NetworkEvents2 for NetworkEvent {
+//     fn get_event(&self) -> Box<dyn Resource> {
+//         match self {
+//             NetworkEvent::SpawnPlayer(event) => Box::new(event),
+//             NetworkEvent::SpawnSpaceship(event) => Box::new(event),
+//         }
+//     }
+// }
 
 /// Sends events of type `T`.
 #[derive(SystemParam)]
@@ -101,6 +101,7 @@ impl<'w, 's, T: Resource> EventWriterSwitch<'w, 's, T> {
         self.events.send(event);
     }
 
+    // TODO - Add this back again later.
     // pub fn send_batch(&mut self, events: impl Iterator<Item = T>) {
     //     self.events.extend(events);
     // }
