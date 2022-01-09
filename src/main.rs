@@ -4,7 +4,8 @@ use bevy::{
     app::Events,
     core::FixedTimestep,
     ecs::system::{Resource, SystemParam},
-    prelude::*,
+    prelude::{App, CoreStage, EventReader, ResMut, SystemSet},
+    DefaultPlugins,
 };
 
 #[derive(PartialEq, Debug, Clone, Hash)]
@@ -35,13 +36,16 @@ const EXTERNAL_EVENT_2: NetworkEvent = NetworkEvent::SpawnSpaceship(SpawnSpacesh
     network_id: 2,
 });
 
-pub fn add_event_switch<T>(&mut self) -> &mut Self
-where
-    T: Vec<Resource>,
-{
-    // TODO - Impl iteroator for enum (preferably, but maybe just NetworkEvent for now). Do i need some generic enum iterator with a constraint.
-    self.init_resource::<Events<T>>()
-        .add_system_to_stage(CoreStage::First, Events::<T>::update_system)
+trait EventSwitch {
+    fn add_event_switch<T>(&mut self) -> &mut Self;
+}
+impl EventSwitch for App {
+    fn add_event_switch<T>(&mut self) -> &mut Self {
+        // TODO Need to accept T as Enum with some contrained for enum(T). Then iterate over it.
+        self.init_resource::<Events<T>>()
+            .add_system_to_stage(CoreStage::First, Events::<T>::update_system)
+        // TODO - I probably need a more advanced app implementation, now it says update system is not in trait.
+    }
 }
 
 /// Sends events of type `T`.
